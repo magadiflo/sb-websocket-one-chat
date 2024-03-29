@@ -71,3 +71,44 @@ vincular los documentos.
     </dependency>
 </dependencies>
 ````
+
+## MongoDB - Contenedor
+
+Trabajaremos con la base de datos `mongodb`, para eso creamos su servicio con sus configuraciones correspondientes.
+Además, crearemos un servicio adicional con el que podremos interactuar con la base de datos de mongo,
+ese servicio será `mongo-express`, aunque en mi computadora tengo instalado el `Studio-3T` que es lo mismo que usaría
+para poder interactura con la base de datos de mongo.
+
+````yml
+services:
+  mongodb:
+    image: mongo:6-jammy
+    container_name: mongo_db
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: magadiflo
+      MONGO_INITDB_ROOT_PASSWORD: magadiflo
+  mongo-express:
+    image: mongo-express
+    container_name: mongo_express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: magadiflo
+      ME_CONFIG_MONGODB_ADMINPASSWORD: magadiflo
+      ME_CONFIG_MONGODB_SERVER: mongodb
+volumes:
+  mongo:
+    name: mongo
+````
+
+**IMPORTANTE**
+
+Para poder usar `mongo-express` en el navegador ingresamos mediante la siguiente url: `http://localhost:8081`:
+
+- **username:** admin
+- **password:** `pass`
