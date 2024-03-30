@@ -285,3 +285,52 @@ public class UserServiceImpl implements UserService {
     }
 }
 ````
+
+## Controlador de usuario
+
+````java
+
+@RequiredArgsConstructor
+@Controller
+public class UserController {
+
+    private final UserService userService;
+
+    @MessageMapping("/user.addUser")
+    @SendTo("/user/topic") // Para informar que un nuevo usuario se ha conectado. Esta cola será creado automáticamente
+    public User addUser(@Payload User user) {
+        this.userService.saveUser(user);
+        return user;
+    }
+
+    @MessageMapping("/user.disconnectUser")
+    @SendTo("/user/topic") // Notificaremos a la misma cola que algún usuario está desconectado
+    public User disconnect(@Payload User user) {
+        this.userService.disconnect(user);
+        return user;
+    }
+
+    @GetMapping(path = "/users")
+    public ResponseEntity<List<User>> findConnectedUsers() {
+        return ResponseEntity.ok(this.userService.findConnectedUsers());
+    }
+}
+````
+
+## Document ChatRoom
+
+````java
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@Document(collection = "chat_rooms")
+public class ChatRoom {
+    @Id
+    private String id;
+    private String chatId;
+    private String senderId;
+    private String recipientId;
+}
+````
