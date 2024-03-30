@@ -2,6 +2,7 @@ services:
   mongodb:
     image: mongo:6-jammy
     container_name: mongo_db
+    restart: unless-stopped
     ports:
       - 27017:27017
     volumes:
@@ -12,7 +13,7 @@ services:
   mongo-express:
     image: mongo-express
     container_name: mongo_express
-    restart: always
+    restart: unless-stopped
     ports:
       - 8081:8081
     environment:

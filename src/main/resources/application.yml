@@ -6,3 +6,12 @@ server:
 spring:
   application:
     name: sb-websocket-one-chat
+
+  data:
+    mongodb:
+      username: magadiflo
+      password: magadiflo
+      host: localhost
+      port: 27017
+      database: db_sb_websocket_one_chat
+      authentication-database: admin

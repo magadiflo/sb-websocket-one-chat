@@ -84,6 +84,7 @@ services:
   mongodb:
     image: mongo:6-jammy
     container_name: mongo_db
+    restart: unless-stopped
     ports:
       - 27017:27017
     volumes:
@@ -94,7 +95,7 @@ services:
   mongo-express:
     image: mongo-express
     container_name: mongo_express
-    restart: always
+    restart: unless-stopped
     ports:
       - 8081:8081
     environment:
@@ -112,3 +113,124 @@ Para poder usar `mongo-express` en el navegador ingresamos mediante la siguiente
 
 - **username:** admin
 - **password:** `pass`
+
+## Configurando application.yml
+
+````yml
+server:
+  port: 8080
+  error:
+    include-message: always
+
+spring:
+  application:
+    name: sb-websocket-one-chat
+
+  data:
+    mongodb:
+      username: magadiflo
+      password: magadiflo
+      host: localhost
+      port: 27017
+      database: db_sb_websocket_one_chat
+      authentication-database: admin
+````
+
+## Configurando WebSocket
+
+`registry.addEndpoint("/web-socket")`, registre un endpoint `STOMP` sobre `WebSocket` en la ruta de mapeo proporcionada.
+Este endpoint será el que usaremos cuando iniciemos la conexión con WebSocket desde la aplicación cliente al Servidor.
+
+`registry.enableSimpleBroker("/user")`, habilite un **intermediario de mensajes simple (simple message broker)** y
+configure uno o más prefijos para filtrar destinos dirigidos al **intermediario (broker)** (por ejemplo, destinos con el
+prefijo `/topic`). En nuestro caso, el prefijo definido será `/user`.
+
+`registry.setApplicationDestinationPrefixes("/app")`, configure uno o más prefijos para filtrar destinos dirigidos a
+métodos anotados en la aplicación. Por ejemplo, los destinos con el prefijo `/app` pueden procesarse mediante métodos
+anotados, mientras que otros destinos pueden apuntar al intermediario de mensajes (por ejemplo, `/topic`, `/queue`).
+Cuando se procesan mensajes, el prefijo coincidente se elimina del destino para formar la ruta de búsqueda. Esto
+significa que las anotaciones no deben contener el prefijo de destino.
+A los prefijos que no tengan una barra diagonal se les agregará una automáticamente.
+
+`registry.setUserDestinationPrefix("/user")`, configure el prefijo utilizado para identificar los destinos de los
+usuarios. Los destinos de usuario brindan la posibilidad de que un usuario se suscriba a nombres de cola exclusivos de
+su sesión, así como de que otros envíen mensajes a esas colas únicas y específicas del usuario.
+Por ejemplo, cuando un usuario intenta suscribirse a `/user/queue/position-updates`, el destino puede traducirse
+a `/queue/position-updates-useri9oqdfzo`, lo que genera un nombre de cola único que no colisiona con ningún otro usuario
+que intente hacer lo mismo. Posteriormente, cuando los mensajes se envían a `/user/{username}/queue/position-updates`,
+el destino se traduce a `/queue/position-updates-useri9oqdfzo`.
+El prefijo predeterminado utilizado para identificar dichos destinos es `/user/`.
+
+````java
+
+@Configuration
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.addEndpoint("/web-socket")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
+    }
+
+    @Override
+    public boolean configureMessageConverters(List<MessageConverter> messageConverters) {
+        DefaultContentTypeResolver resolver = new DefaultContentTypeResolver();
+        resolver.setDefaultMimeType(MimeTypeUtils.APPLICATION_JSON);
+
+        MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
+        converter.setObjectMapper(new ObjectMapper());
+        converter.setContentTypeResolver(resolver);
+
+        messageConverters.add(converter);
+        return false; // No queremos usar los valores predeterminados sino el que acabamos de configurar
+    }
+
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry registry) {
+        registry.enableSimpleBroker("/user");
+        registry.setApplicationDestinationPrefixes("/app");
+        registry.setUserDestinationPrefix("/user");
+    }
+}
+````
+
+El método `configureMessageConverters()`, permite configurar los convertidores de mensajes que se utilizarán al extraer
+la carga útil de los mensajes en métodos anotados y al enviar mensajes (por ejemplo, a través del "intermediario"
+SimpMessagingTemplate).
+
+La lista proporcionada, inicialmente vacía, se puede usar para agregar convertidores de mensajes, mientras que el valor
+de retorno booleano se usa para determinar si también se debe agregar el mensaje predeterminado.
+
+````
+Parámetros:
+messageConverters: los convertidores a configurar (inicialmente una lista vacía)
+
+Devoluciones:
+si agregar también el convertidor predeterminado o no
+````
+
+## Document User
+
+Será como nuestra entidad, pero como estamos trabajando con MongoDb será nuestro documento que estará mapeado a la
+colección `users` en la base de datos de mongoDB.
+
+````java
+public enum Status {
+    ONLINE,
+    OFFLINE
+}
+````
+
+````java
+
+@Getter
+@Setter
+@Document(collection = "users")
+public class User {
+    @Id
+    private String nickName;
+    private String fullName;
+    private Status status;
+}
+````
