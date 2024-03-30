@@ -234,3 +234,54 @@ public class User {
     private Status status;
 }
 ````
+
+## Repositorio
+
+````java
+public interface UserRepository extends MongoRepository<User, String> {
+    List<User> findAllByStatus(Status status);
+}
+````
+
+## Servicio
+
+````java
+public interface UserService {
+    void saveUser(User user);
+
+    void disconnect(User user);
+
+    List<User> findConnectedUsers();
+}
+````
+
+````java
+
+@RequiredArgsConstructor
+@Service
+public class UserServiceImpl implements UserService {
+
+    private final UserRepository userRepository;
+
+    @Override
+    public void saveUser(User user) {
+        user.setStatus(Status.ONLINE);
+        this.userRepository.save(user);
+    }
+
+    @Override
+    public void disconnect(User user) {
+        Optional<User> userDBOptional = this.userRepository.findById(user.getNickName());
+        if (userDBOptional.isPresent()) {
+            User userDB = userDBOptional.get();
+            userDB.setStatus(Status.OFFLINE);
+            this.userRepository.save(userDB);
+        }
+    }
+
+    @Override
+    public List<User> findConnectedUsers() {
+        return this.userRepository.findAllByStatus(Status.ONLINE);
+    }
+}
+````
