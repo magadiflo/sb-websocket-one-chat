@@ -1,7 +1,8 @@
-package dev.magadiflo.app.service;
+package dev.magadiflo.app.service.impl;
 
 import dev.magadiflo.app.document.ChatRoom;
 import dev.magadiflo.app.repository.ChatRoomRepository;
+import dev.magadiflo.app.service.ChatRoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

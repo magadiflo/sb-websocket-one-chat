@@ -396,3 +396,108 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 }
 ````
+
+## ChatMessage
+
+````java
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@Document(collection = "chat_messages")
+public class ChatMessage {
+    @Id
+    private String id;
+    private String chatId;
+    private String senderId;
+    private String recipientId;
+    private String content;
+    private LocalDateTime timestamp;
+}
+````
+
+````java
+public record ChatNotification(String id, String senderId, String recipientId, String content) {
+}
+````
+
+## ChatMessageRepository
+
+````java
+public interface ChatMessageRepository extends MongoRepository<ChatMessage, String> {
+    List<ChatMessage> findByChatId(String chatId);
+}
+````
+
+## ChatMessageService
+
+````java
+public interface ChatMessageService {
+    List<ChatMessage> findChatMessages(String senderId, String recipientId);
+
+    ChatMessage save(ChatMessage chatMessage);
+}
+````
+
+````java
+
+@RequiredArgsConstructor
+@Service
+public class ChatMessageServiceImpl implements ChatMessageService {
+
+    private final ChatMessageRepository chatMessageRepository;
+    private final ChatRoomService chatRoomService;
+
+    @Override
+    public List<ChatMessage> findChatMessages(String senderId, String recipientId) {
+        return this.chatRoomService.getChatRoomId(senderId, recipientId, false)
+                .map(this.chatMessageRepository::findByChatId)
+                .orElseGet(ArrayList::new);
+    }
+
+    @Override
+    public ChatMessage save(ChatMessage chatMessage) {
+        String chatId = this.chatRoomService.getChatRoomId(chatMessage.getSenderId(), chatMessage.getRecipientId(), true)
+                .orElseThrow();
+        chatMessage.setChatId(chatId);
+        this.chatMessageRepository.save(chatMessage);
+        return chatMessage;
+    }
+}
+````
+
+## ChatController
+
+````java
+
+@RequiredArgsConstructor
+@Controller
+public class ChatController {
+
+    private final SimpMessagingTemplate simpMessagingTemplate;
+    private final ChatMessageService chatMessageService;
+
+    @MessageMapping("/chat")
+    public void processMessage(@Payload ChatMessage chatMessage) {
+        ChatMessage chatMessageDB = this.chatMessageService.save(chatMessage);
+        ChatNotification payload = new ChatNotification(
+                chatMessageDB.getId(),
+                chatMessageDB.getSenderId(),
+                chatMessageDB.getRecipientId(),
+                chatMessageDB.getContent()
+        );
+
+        // Queremos enviar el payload a la cola de abajo. Ejemplo de cómo sería la cola: magadiflo/queue/messages y se
+        // envía el payload, donde el getRecipientId(), para nuestro ejemplo es magadiflo.
+        // Luego magadiflo, se subscribirá a la cola magadiflo/queue/messages
+        this.simpMessagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages", payload);
+    }
+
+    @GetMapping("/messages/{senderId}/{recipientId}")
+    public ResponseEntity<List<ChatMessage>> findChatMessages(@PathVariable String senderId, @PathVariable String recipientId) {
+        return ResponseEntity.ok(this.chatMessageService.findChatMessages(senderId, recipientId));
+    }
+}
+````

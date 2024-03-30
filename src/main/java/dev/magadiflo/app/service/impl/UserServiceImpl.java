@@ -1,8 +1,9 @@
-package dev.magadiflo.app.service;
+package dev.magadiflo.app.service.impl;
 
 import dev.magadiflo.app.document.Status;
 import dev.magadiflo.app.document.User;
 import dev.magadiflo.app.repository.UserRepository;
+import dev.magadiflo.app.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
