@@ -164,11 +164,11 @@ El prefijo predeterminado utilizado para identificar dichos destinos es `/user/`
 ````java
 
 @Configuration
-@EnableWebSocketMessageBroker
+@EnableWebSocketMessageBroker // Habilita la gestión de mensajes WebSocket
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/web-socket") // Registrar un punto de conexión WebSocket
+        registry.addEndpoint("/web-socket") // WebSocket endpoint al que se conectarán los clientes
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
@@ -188,9 +188,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/user");               // Habilita un broker simple
-        registry.setApplicationDestinationPrefixes("/app"); // Prefijo para los destinos de la aplicación
-        registry.setUserDestinationPrefix("/user");         // Prefijo para los destinos de usuario
+        /**
+         * Habilitar un simple broker (intermediario) de mensajes en memoria para llevar mensajes de vuelta al cliente
+         * en destinos prefijados (por ejemplo, destinos con el prefijo "/topic"). En nuestro caso definimos
+         * el prefijo /user.
+         */
+        registry.enableSimpleBroker("/user");
+
+        // Designa el prefijo "/app" para mensajes vinculados a métodos anotados con @MessageMapping en el controlador.
+        registry.setApplicationDestinationPrefixes("/app");
+
+        /**
+         * Prefijo utilizado para identificar los destinos de usuario. Los destinos de usuario permiten que un usuario
+         * se suscriba a nombres de colas exclusivos de su sesión y que otros usuarios envíen mensajes a esas colas
+         * exclusivas y específicas del usuario.
+         */
+        registry.setUserDestinationPrefix("/user");
     }
 }
 ````
@@ -288,6 +301,10 @@ public class UserServiceImpl implements UserService {
 
 ## Controlador de usuario
 
+En el enfoque de Spring para trabajar con mensajería `STOMP`, los mensajes `STOMP` se pueden enrutar a clases
+`@Controller`. Por ejemplo, en el `UserController` hay dos métodos que están mapeados para manejar mensajes al destino
+`/user.addUser` y al destino `/user.disconnectUser`, como muestra el siguiente código:
+
 ````java
 
 @RequiredArgsConstructor
@@ -316,6 +333,23 @@ public class UserController {
     }
 }
 ````
+
+El controlador anterior es conciso y sencillo, pero tiene mucho que ver. Lo desglosaremos paso a paso:
+
+La anotación `@MessageMapping` asegura que, si se envía un mensaje al destino `/user.addUser`, se llame al método
+`addUser()`, mientras que si se envía un mensaje al destino `/user.disconnectUser`, se llame al método `disconnect()`.
+
+El payload que se pasa al método `addUser()` se vincula el objeto `User`, es lo que queremos indicar con la
+anotación `@Payload`. Lo mismo ocurre con el método `disconnect()`. Recordemos que el `@Payload` es una anotación que
+vincula un parámetro de método al `payload` de un mensaje.
+
+La anotación `@Payload` se utiliza para indicar que un parámetro de un método está destinado a recibir el cuerpo del
+mensaje enviado a través del `WebSocket`. Si omites la anotación @Payload, Spring buscará un solo parámetro en el método
+y lo usará automáticamente como el cuerpo del mensaje, asumiendo que el método está suscrito a un WebSocket que envía
+mensajes con un único cuerpo.
+
+El método `addUser()` devuelve el objeto user. El valor devuelto se transmite a todos los subscriptores de
+`/user/public`, como se especifica en la anotación `@SendTo`.
 
 ## Document ChatRoom
 
@@ -651,10 +685,13 @@ function onConnected() {
      * * sea notificado.
      */
     stompClient.subscribe(`/user/${nickname}/queue/messages`, onMessageReceived);
+
+    // También se va a subscribir a la siguiente cola, donde el servidor publicará mensajes cuando un usuario
+    // se agregue o se desconecte
     stompClient.subscribe(`/user/public`, onMessageReceived);
 
     /**
-     * * Registrar al usuario conectado
+     * * Aquí se envía el payload al destino /app/user.addUser, donde el UserController.addUser() lo recibirá
      */
     const payload = JSON.stringify({ nickName: nickname, fullName: fullname, status: 'ONLINE' });
     stompClient.send('/app/user.addUser', {}, payload);

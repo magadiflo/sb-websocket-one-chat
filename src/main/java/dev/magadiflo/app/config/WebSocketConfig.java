@@ -18,7 +18,7 @@ import java.util.List;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/web-socket") // Registrar un punto de conexión WebSocket
+        registry.addEndpoint("/web-socket") // WebSocket endpoint al que se conectarán los clientes
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
@@ -38,8 +38,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/user");   // Habilita un broker simple
-        registry.setApplicationDestinationPrefixes("/app");      // Prefijo para los destinos de la aplicación
-        registry.setUserDestinationPrefix("/user");              // Prefijo para los destinos de usuario
+        /**
+         * Habilitar un simple broker (intermediario) de mensajes en memoria para llevar mensajes de vuelta al cliente
+         * en destinos prefijados (por ejemplo, destinos con el prefijo "/topic"). En nuestro caso definimos
+         * el prefijo /user.
+         */
+        registry.enableSimpleBroker("/user");
+
+        // Designa el prefijo "/app" para mensajes vinculados a métodos anotados con @MessageMapping en el controlador.
+        registry.setApplicationDestinationPrefixes("/app");
+
+        /**
+         * Prefijo utilizado para identificar los destinos de usuario. Los destinos de usuario permiten que un usuario
+         * se suscriba a nombres de colas exclusivos de su sesión y que otros usuarios envíen mensajes a esas colas
+         * exclusivas y específicas del usuario.
+         */
+        registry.setUserDestinationPrefix("/user");
     }
 }

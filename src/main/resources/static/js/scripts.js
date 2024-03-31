@@ -54,10 +54,13 @@ function onConnected() {
      * * sea notificado.
      */
     stompClient.subscribe(`/user/${nickname}/queue/messages`, onMessageReceived);
+
+    // También se va a subscribir a la siguiente cola, donde el servidor publicará mensajes cuando un usuario
+    // se agregue o se desconecte
     stompClient.subscribe(`/user/public`, onMessageReceived);
 
     /**
-     * * Registrar al usuario conectado
+     * * Aquí se envía el payload al destino /app/user.addUser, donde el UserController.addUser() lo recibirá
      */
     const payload = JSON.stringify({ nickName: nickname, fullName: fullname, status: 'ONLINE' });
     stompClient.send('/app/user.addUser', {}, payload);
