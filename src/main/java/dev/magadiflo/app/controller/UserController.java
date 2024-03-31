@@ -19,14 +19,14 @@ public class UserController {
     private final UserService userService;
 
     @MessageMapping("/user.addUser")
-    @SendTo("/user/topic") // Para informar que un nuevo usuario se ha conectado. Esta cola será creado automáticamente
+    @SendTo("/user/public") // Para informar que un nuevo usuario se ha conectado. Esta cola será creado automáticamente
     public User addUser(@Payload User user) {
         this.userService.saveUser(user);
         return user;
     }
 
     @MessageMapping("/user.disconnectUser")
-    @SendTo("/user/topic") // Notificaremos a la misma cola que algún usuario está desconectado
+    @SendTo("/user/public") // Notificaremos a la misma cola que algún usuario está desconectado
     public User disconnect(@Payload User user) {
         this.userService.disconnect(user);
         return user;

@@ -31,9 +31,23 @@ public class ChatController {
                 chatMessageDB.getContent()
         );
 
-        // Queremos enviar el payload a la cola de abajo. Ejemplo de cómo sería la cola: magadiflo/queue/messages y se
-        // envía el payload, donde el getRecipientId(), para nuestro ejemplo es magadiflo.
-        // Luego magadiflo, se subscribirá a la cola magadiflo/queue/messages
+        /**
+         * Enviando mensaje a un usuario específico
+         * ****************************************
+         * Queremos enviar el payload a la cola de abajo.
+         * Vemos que el método convertAndSendToUser tiene los siguientes parámetros, de los cuales nos interesa los
+         * dos primeros para poder ver cómo es que se genera la cola:
+         * (chatMessage.getRecipientId(), "/queue/messages", payload)
+         *
+         * Para nuestro ejemplo el getRecipientId() será el usuario magadiflo, entonces a eso le debemos concatenar
+         * el siguiente valor del parámetro /queue/messages dando como resultado la siguiente cola:
+         * magadiflo/queue/messages
+         *
+         * Luego magadiflo, se subscribirá a la cola magadiflo/queue/messages.
+         *
+         * El payload enviado a través de este destino "/queue/messages" se envía solo al usuario magadiflo, donde
+         * magadiflo se obtiene de chatMessage.getRecipientId()
+         */
         this.simpMessagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages", payload);
     }
 

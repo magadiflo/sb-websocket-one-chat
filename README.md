@@ -168,7 +168,7 @@ El prefijo predeterminado utilizado para identificar dichos destinos es `/user/`
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/web-socket")
+        registry.addEndpoint("/web-socket") // Registrar un punto de conexión WebSocket
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
@@ -188,9 +188,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/user");
-        registry.setApplicationDestinationPrefixes("/app");
-        registry.setUserDestinationPrefix("/user");
+        registry.enableSimpleBroker("/user");               // Habilita un broker simple
+        registry.setApplicationDestinationPrefixes("/app"); // Prefijo para los destinos de la aplicación
+        registry.setUserDestinationPrefix("/user");         // Prefijo para los destinos de usuario
     }
 }
 ````
@@ -297,14 +297,14 @@ public class UserController {
     private final UserService userService;
 
     @MessageMapping("/user.addUser")
-    @SendTo("/user/topic") // Para informar que un nuevo usuario se ha conectado. Esta cola será creado automáticamente
+    @SendTo("/user/public") // Para informar que un nuevo usuario se ha conectado. Esta cola será creado automáticamente
     public User addUser(@Payload User user) {
         this.userService.saveUser(user);
         return user;
     }
 
     @MessageMapping("/user.disconnectUser")
-    @SendTo("/user/topic") // Notificaremos a la misma cola que algún usuario está desconectado
+    @SendTo("/user/public") // Notificaremos a la misma cola que algún usuario está desconectado
     public User disconnect(@Payload User user) {
         this.userService.disconnect(user);
         return user;
@@ -363,7 +363,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Override
     public Optional<String> getChatRoomId(String senderId, String recipientId, boolean createNewRoomIfNotExists) {
         return this.chatRoomRepository.findBySenderIdAndRecipientId(senderId, recipientId)
-                .map(ChatRoom::getId)
+                .map(ChatRoom::getChatId)
                 .or(() -> {
                     if (createNewRoomIfNotExists) {
                         String chatId = this.createChatId(senderId, recipientId);
@@ -414,7 +414,7 @@ public class ChatMessage {
     private String senderId;
     private String recipientId;
     private String content;
-    private LocalDateTime timestamp;
+    private Date timestamp;
 }
 ````
 
@@ -489,9 +489,23 @@ public class ChatController {
                 chatMessageDB.getContent()
         );
 
-        // Queremos enviar el payload a la cola de abajo. Ejemplo de cómo sería la cola: magadiflo/queue/messages y se
-        // envía el payload, donde el getRecipientId(), para nuestro ejemplo es magadiflo.
-        // Luego magadiflo, se subscribirá a la cola magadiflo/queue/messages
+        /**
+         * Enviando mensaje a un usuario específico
+         * ****************************************
+         * Queremos enviar el payload a la cola de abajo.
+         * Vemos que el método convertAndSendToUser tiene los siguientes parámetros, de los cuales nos interesa los
+         * dos primeros para poder ver cómo es que se genera la cola:
+         * (chatMessage.getRecipientId(), "/queue/messages", payload)
+         *
+         * Para nuestro ejemplo el getRecipientId() será el usuario magadiflo, entonces a eso le debemos concatenar
+         * el siguiente valor del parámetro /queue/messages dando como resultado la siguiente cola:
+         * magadiflo/queue/messages
+         *
+         * Luego magadiflo, se subscribirá a la cola magadiflo/queue/messages.
+         *
+         * El payload enviado a través de este destino "/queue/messages" se envía solo al usuario magadiflo, donde
+         * magadiflo se obtiene de chatMessage.getRecipientId()
+         */
         this.simpMessagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages", payload);
     }
 

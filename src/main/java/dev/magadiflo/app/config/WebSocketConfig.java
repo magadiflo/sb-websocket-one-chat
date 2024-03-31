@@ -18,7 +18,7 @@ import java.util.List;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/web-socket")
+        registry.addEndpoint("/web-socket") // Registrar un punto de conexión WebSocket
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
@@ -38,8 +38,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/user");
-        registry.setApplicationDestinationPrefixes("/app");
-        registry.setUserDestinationPrefix("/user");
+        registry.enableSimpleBroker("/user");   // Habilita un broker simple
+        registry.setApplicationDestinationPrefixes("/app");      // Prefijo para los destinos de la aplicación
+        registry.setUserDestinationPrefix("/user");              // Prefijo para los destinos de usuario
     }
 }
